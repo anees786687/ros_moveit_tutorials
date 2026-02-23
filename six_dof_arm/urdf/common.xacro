@@ -1,0 +1,116 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:property name="base_mass" value="0.5" />
+    <xacro:property name="base_len" value="0.3" />
+    <xacro:property name="base_wid" value="0.3" />
+    <xacro:property name="base_hei" value="0.05" />
+
+    <xacro:property name="static_mass" value="0.1" />
+    <xacro:property name="static_rad" value="0.02" />
+    <xacro:property name="static_len" value="0.02" />
+
+    <xacro:property name="shoulder_link_mass" value="0.3" />
+    <xacro:property name="shoulder_link_rad" value="0.05" />
+    <xacro:property name="shoulder_link_len" value="0.1" />
+    
+    <xacro:property name="arm_mass" value="0.2" />
+    <xacro:property name="arm_rad" value="0.02" />
+    <xacro:property name="arm_len" value="0.3" />
+
+    <xacro:property name="elbow_link_mass"  value="${static_mass}" />
+    <xacro:property name="elbow_link_rad"   value="${static_rad}" />
+    <xacro:property name="elbow_link_len"   value="${static_len * 1.5}" />
+    
+    <xacro:property name="forearm_link_mass" value="${arm_mass}" />
+    <xacro:property name="forearm_link_rad" value="${arm_rad}" />
+    <xacro:property name="forearm_link_len" value="${arm_len}" />
+
+    <xacro:property name="wrist_link_mass"  value="${static_mass}" />
+    <xacro:property name="wrist_link_rad"   value="${static_rad}" />
+    <xacro:property name="wrist_link_len"   value="${static_len}"  />
+
+    <xacro:property name="hand_link_mass" value="${static_mass}" />
+    <xacro:property name="hand_link_rad" value="${static_rad}" />
+    <xacro:property name="hand_link_len" value="${static_len}" />
+
+
+    <xacro:property name="gripper_mass" value="0.1" />
+    <xacro:property name="gripper_rad" value="0.005" />
+    <xacro:property name="gripper_len" value="0.08" />
+
+    <xacro:property name="gripper_finger_len" value="${2 * gripper_rad}"/>
+    <xacro:property name="gripper_finger_wid" value="${2 * gripper_rad}"/>
+    <xacro:property name="gripper_finger_hei" value="0.08"/>
+
+    
+
+    <material name="blue">
+        <color rgba="0 0 0.5 1" />
+    </material>
+
+    <material name="grey">
+        <color rgba="0.5 0.5 0.5 1" />
+    </material>
+
+    <xacro:macro name="box_shape" params="link_name m x y z o_xyz o_rpy">
+        <link name="${link_name}">
+            <visual>
+                <geometry>
+                    <box size="${x} ${y} ${z}"/>
+                </geometry>
+                <origin xyz="${o_xyz}" rpy="${o_rpy}"/>
+                <material name="blue" />
+                
+            </visual>
+
+            <collision>
+                <geometry>
+                    <box size="${x} ${y} ${z}"/>
+                </geometry>
+                <origin xyz="${o_xyz}" rpy="${o_rpy}"/>
+            </collision>
+
+            <inertial>
+                <mass value="${m}" />
+                <origin xyz="${o_xyz}" rpy="${o_rpy}" />
+                <inertia ixx="${(m/12) * (y*y + z*z)}" ixy="0" ixz="0"
+                iyy="${(m/12) * (x*x + z*z)}" iyz="0"
+                izz="${(m/12) * (x*x + y*y)}" />
+            </inertial>
+        </link>
+
+    </xacro:macro>
+
+    <xacro:macro name="cylinder_shape" params="link_name m r l o_xyz o_rpy color">
+        <link name="${link_name}">
+           
+            <visual>
+                <geometry>
+                    <cylinder radius="${r}" length="${l}"/>
+                </geometry>
+                <origin xyz="${o_xyz}" rpy="${o_rpy}"/>
+                <material name="${color}"/>
+                
+            </visual>
+
+            <collision>
+                <geometry>
+                    <!-- <box size="${2*r} ${2*r} ${l}"/> -->
+                    <cylinder radius="${r}" length="${l}"/>
+                </geometry>
+                <origin xyz="${o_xyz}" rpy="${o_rpy}"/>
+            </collision>
+
+            <inertial>
+                <mass value="${m}" />
+                <origin xyz="${o_xyz}" rpy="${o_rpy}" />
+                <inertia ixx="${(m/12) * (3*r*r + l*l)}" ixy="0" ixz="0"
+                iyy="${(m/12) * (3*r*r + l*l)}" iyz="0"
+                izz="${(m/2) * (r*r)}" />
+            </inertial>
+        </link>
+    </xacro:macro>
+
+
+</robot>

@@ -1,0 +1,81 @@
+    #include <thread>
+
+    #include <geometry_msgs/msg/pose_stamped.hpp>
+    #include <moveit/move_group_interface/move_group_interface.h>
+    #include <rclcpp/rclcpp.hpp>
+
+    int main(int argc, char **argv) {
+    rclcpp::init(argc, argv);
+
+    rclcpp::NodeOptions options;
+    options.automatically_declare_parameters_from_overrides(true);
+    auto node = std::make_shared<rclcpp::Node>("joint_pose_goals", options);
+
+    // This node runs standalone via `ros2 run`, so provide IK defaults locally.
+    if (!node->has_parameter("robot_description_kinematics.arm.kinematics_solver")) {
+    node->declare_parameter("robot_description_kinematics.arm.kinematics_solver",
+                            "kdl_kinematics_plugin/KDLKinematicsPlugin");
+    node->declare_parameter("robot_description_kinematics.arm.kinematics_solver_search_resolution", 0.005);
+    node->declare_parameter("robot_description_kinematics.arm.kinematics_solver_attempts", 10);
+    node->declare_parameter("robot_description_kinematics.arm.kinematics_solver_timeout", 0.2);
+    }
+
+    rclcpp::executors::SingleThreadedExecutor executor;
+    executor.add_node(node);
+    auto spinner = std::thread([&executor]() { executor.spin(); });
+
+    auto arm = moveit::planning_interface::MoveGroupInterface(node, "arm");
+    arm.setPlanningTime(10.0);
+    arm.setNumPlanningAttempts(10);
+    arm.setGoalPositionTolerance(0.01);
+    arm.setGoalOrientationTolerance(0.1);
+    arm.allowReplanning(true);
+
+    const std::string ee_link = arm.getEndEffectorLink();
+    RCLCPP_INFO(node->get_logger(), "Planning frame: %s", arm.getPlanningFrame().c_str());
+    RCLCPP_INFO(node->get_logger(), "EE link: %s", ee_link.c_str());
+
+    tf2::Quaternion q;
+    q.setRPY(3.14, 1.57, 0.0); // neutral orientation first
+    q = q.normalize();
+    const auto current_pose = arm.getCurrentPose(ee_link);
+    geometry_msgs::msg::PoseStamped target_pose = current_pose;
+    target_pose.header.frame_id = arm.getPlanningFrame();
+    target_pose.pose.position.x += -0.05;   // forward, reachable
+    target_pose.pose.position.y += -0.05;   // centered
+    target_pose.pose.position.z += 0.05;   // moderate height
+    target_pose.pose.orientation.y = q.getX();
+    target_pose.pose.orientation.z = q.getY();
+    target_pose.pose.orientation.x = q.getZ();
+    target_pose.pose.orientation.w = q.getW();
+
+    arm.setStartStateToCurrentState();
+    bool ik_ok = arm.setApproximateJointValueTarget(target_pose, ee_link);
+    if (!ik_ok) {
+    RCLCPP_WARN(node->get_logger(),
+                "Requested pose is not reachable with current constraints. Falling back to current pose.");
+    target_pose = current_pose;
+    ik_ok = arm.setApproximateJointValueTarget(target_pose, ee_link);
+    }
+
+    if (!ik_ok) {
+    RCLCPP_ERROR(node->get_logger(),
+                    "Could not find an IK solution. Verify kinematics config and target pose.");
+    rclcpp::shutdown();
+    spinner.join();
+    return 1;
+    }
+
+    moveit::planning_interface::MoveGroupInterface::Plan pose_plan;
+    const bool pose_success = (arm.plan(pose_plan) == moveit::core::MoveItErrorCode::SUCCESS);
+    if (pose_success) {
+    RCLCPP_INFO(node->get_logger(), "Pose planning succeeded. Executing...");
+    arm.execute(pose_plan);
+    } else {
+    RCLCPP_ERROR(node->get_logger(), "Planning failed. Check collisions and controller status.");
+    }
+
+    rclcpp::shutdown();
+    spinner.join();
+    return 0;
+    }

@@ -1,0 +1,10 @@
+# Default initial positions for six_dof_arm's ros2_control fake system
+
+initial_positions:
+  gripper_base_gripper_left: 0
+  joint1: 0
+  joint2: 0
+  joint4: 0
+  joint5: 0
+  joint6: 0
+  joint_3: 0

@@ -1,0 +1,23 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: six_dof_arm
+    relative_path: urdf/arm.urdf.xacro
+  srdf:
+    relative_path: config/six_dof_arm.srdf
+  package_settings:
+    author_name: anisa
+    author_email: anis@a.com
+    generated_timestamp: 1771838148
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+    state:
+      - position

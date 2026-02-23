@@ -1,0 +1,90 @@
+<?xml version="1.0"?>
+
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!-- <link name="base_footprint" /> -->
+    
+    <xacro:box_shape link_name="base_link" m="${base_mass}" x="${base_len}" y="${base_wid}" z="${base_hei}" o_xyz="0 0 ${base_hei / 2}" o_rpy="0 0 0" />
+    <xacro:cylinder_shape link_name="shoulder_link" m="${shoulder_link_mass}" r="${shoulder_link_rad}" l="${shoulder_link_len}" o_xyz="0 0 ${shoulder_link_len / 2}" o_rpy="0 0 0" color="grey"/>
+    <!-- <xacro:cylinder_shape link_name="arm_static" m="${static_mass}" r="${static_rad}" l="${static_len}" o_xyz="0 0 0" o_rpy="0 0 0" color="blue"/> -->
+    <xacro:cylinder_shape link_name="arm_link" m="${arm_mass}" r="${arm_rad}" l="${arm_len}" o_xyz="0 0 ${arm_len / 2}" o_rpy="0 0 0" color="grey"/>
+    <xacro:cylinder_shape link_name="elbow_link" m="${elbow_link_mass}" r="${elbow_link_rad}" l="${elbow_link_len}" o_xyz="0 0 ${ elbow_link_len / 2}" o_rpy="0 0 0" color="blue"/>
+    <xacro:cylinder_shape link_name="forearm_link" m="${forearm_link_mass}" r="${forearm_link_rad}" l="${forearm_link_len}" o_xyz="0 0 ${forearm_link_len / 2}" o_rpy="0 0 0" color="grey"/>
+    <xacro:cylinder_shape link_name="wrist_link" m="${wrist_link_mass}" r="${wrist_link_rad}" l="${wrist_link_len}" o_xyz="0 0 ${wrist_link_len / 2}" o_rpy="0 0 0" color="blue"/>
+    <xacro:cylinder_shape link_name="hand_link" m="${hand_link_mass}" r="${hand_link_rad}" l="${hand_link_len * 2}" o_xyz="0 0 ${hand_link_len}" o_rpy="0 0 0" color="grey"/>
+    <link name="tool_link" />
+    
+
+    <!-- world to base link -->
+    <!-- <joint name="footprint_base" type="fixed">
+        <origin xyz="0.0 0.0 ${base_hei / 2.0}" rpy="0.0 0.0 0.0"/>
+        <parent link="base_footprint"/>
+        <child link="base_link"/>
+        <axis xyz="0.0 0.0 0.0"/>
+    </joint> -->
+
+    <!-- base link to base motor Joint 1 -->
+    <joint name="joint1" type="revolute">
+        <origin xyz="0.0 0.0 ${base_hei}" rpy="0.0 0.0 0.0"/>
+        <parent link="base_link"/>
+        <child link="shoulder_link"/>
+        <axis xyz="0.0 0.0 1.0"/>
+        <limit lower="-${pi}" upper="${pi}" effort="1000.0" velocity="1.0"/>
+    </joint>
+
+    <!-- <joint name="base_motor_shoulder_static" type="fixed">
+        <origin xyz="0 -${shoulder_link_rad + static_len / 2.0} ${shoulder_link_len / 2}" rpy="${pi / 2} 0.0 0.0"/>
+        <parent link="shoulder_link"/>
+        <child link="arm_static"/>
+        <axis xyz="0.0 0.0 0.0"/>
+    </joint> -->
+
+    <joint name="joint2" type="revolute">
+        <origin xyz="0.0 0.0 ${shoulder_link_len}" rpy="0.0 0.0 0.0"/>
+        <parent link="shoulder_link"/>
+        <child link="arm_link"/>
+        <axis xyz="0.0 1.0 0.0"/>
+        <limit lower="0.0" upper="${pi/3}" effort="1000.0" velocity="1.0"/>
+    </joint>
+
+   <joint name="joint_3" type="revolute">
+    <origin xyz="0 0 ${arm_len} " rpy="0.0 0.0 0.0"/>
+    <parent link="arm_link"/>
+    <child link="elbow_link"/>
+    <axis xyz="0.0 1.0 0.0"/>
+    <limit lower="0.0" upper="${pi/3}" effort="1000.0" velocity="1.0"/>
+
+    </joint>
+
+     <joint name="joint4" type="revolute">
+        <origin xyz="0.0 0.0 ${elbow_link_len}" rpy="0.0 0.0 0.0"/>
+        <parent link="elbow_link"/>
+        <child link="forearm_link"/>
+        <axis xyz="0.0 0.0 1.0"/>
+        <limit lower="-${pi}" upper="${pi}" effort="1000.0" velocity="1.0"/>
+    </joint>
+
+    <joint name="joint5" type="revolute">
+        <origin xyz="0.0 0.0 ${forearm_link_len}" rpy="0.0 0.0 0.0"/>
+        <parent link="forearm_link"/>
+        <child link="wrist_link"/>
+        <axis xyz="0.0 1.0 0.0"/>
+        <limit lower="-${pi/4}" upper="${pi/4}" effort="1000.0" velocity="1.0"/>
+    </joint>
+
+    <joint name="joint6" type="continuous">
+        <origin xyz="0.0 0.0 ${hand_link_len}" rpy="0.0 0.0 0.0"/>
+        <parent link="wrist_link"/>
+        <child link="hand_link"/>
+        <axis xyz="0.0 0.0 1.0"/>
+    </joint>
+
+    <joint name="hand_tool_joint" type="fixed">
+        <origin xyz="0.0 0.0 0.04" rpy="0.0 0.0 0.0"/>
+        <parent link="hand_link"/>
+        <child link="tool_link"/>
+    </joint>
+    
+    
+  
+</robot>
