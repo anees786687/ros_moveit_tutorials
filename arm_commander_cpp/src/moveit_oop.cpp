@@ -1,11 +1,21 @@
 #include <rclcpp/rclcpp.hpp>
 #include <moveit/move_group_interface/move_group_interface.h>
+#include <example_interfaces/msg/string.hpp>
+#include <example_interfaces/msg/float64_multi_array.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+// #include "six_dof_arm_interfaces/msg"
+// Replace the above with the actual message header(s) you need, for example:
+#include "six_dof_arm_interfaces/msg/send_pose_goal.hpp"
 #include <thread>
 
 
 using MoveGroupInterface = moveit::planning_interface::MoveGroupInterface;
 using Plan = moveit::planning_interface::MoveGroupInterface::Plan;
 using MoveItErrorCode = moveit::core::MoveItErrorCode;
+using String = example_interfaces::msg::String;
+using JointAngles = example_interfaces::msg::Float64MultiArray;
+using Pose = six_dof_arm_interfaces::msg::SendPoseGoal;
+
 class MoveitCommander{
     public:
         MoveitCommander(std::shared_ptr<rclcpp::Node> node) : rate(1.0/3.0) {
@@ -18,7 +28,9 @@ class MoveitCommander{
                 node->declare_parameter("robot_description_kinematics.arm.kinematics_solver_attempts", 10);
                 node->declare_parameter("robot_description_kinematics.arm.kinematics_solver_timeout", 0.2);
             }
-
+            this->gripper_sub = node->create_subscription<String>("gripper_status",10,std::bind(&MoveitCommander::gripper_sub_cb,this, std::placeholders::_1));
+            this->joint_angles_sub = node->create_subscription<JointAngles>("joint_angles", 10, std::bind(&MoveitCommander::joint_angles_sub_cb, this, std::placeholders::_1));
+            this->pose_goal_sub = node->create_subscription<Pose>("pose_goal", 10, std::bind(&MoveitCommander::pose_goal_sub_cb, this, std::placeholders::_1));
 
             this->arm = std::make_shared<MoveGroupInterface>(this->node, "arm");
             this->arm->setMaxAccelerationScalingFactor(0.7);
@@ -71,7 +83,7 @@ class MoveitCommander{
                     "Cartesian fraction=%.3f, points=%zu",
                     fraction, trajectory.joint_trajectory.points.size());
 
-                if(fraction > 0.99 && trajectory.joint_trajectory.points.size() > 1){
+                if(fraction > 0 && trajectory.joint_trajectory.points.size() > 1){
                     this->log_info("Found valid trajectory executing cartesian path");
                     MoveItErrorCode exec_rc = this->arm->execute(trajectory);
                     if (exec_rc == MoveItErrorCode::SUCCESS) {
@@ -102,6 +114,10 @@ class MoveitCommander{
         std::shared_ptr<rclcpp::Node> node;
         std::shared_ptr<MoveGroupInterface> arm;
         std::shared_ptr<MoveGroupInterface> gripper;
+        rclcpp::Subscription<String>::SharedPtr gripper_sub;
+        rclcpp::Subscription<JointAngles>::SharedPtr joint_angles_sub;
+        rclcpp::Subscription<Pose>::SharedPtr pose_goal_sub;
+        std::string gripper_status;
         std::function<void(const char*)> log_info = [this](const char *msg){
             RCLCPP_INFO(this->node->get_logger(), "%s", msg);
         };
@@ -132,6 +148,23 @@ class MoveitCommander{
 
         }
 
+        void gripper_sub_cb(const String::SharedPtr msg){
+            this->gripper_status = msg->data;
+            RCLCPP_INFO(node->get_logger(), "Received gripper goal: %s!", this->gripper_status.c_str());
+
+            if(this->gripper_status == "open") this->openGripper();
+            else if(this->gripper_status == "close") this->closeGripper();
+        }
+
+        void joint_angles_sub_cb(const JointAngles::SharedPtr msg){
+            RCLCPP_INFO(node->get_logger(), "Received joint goal!");
+            this->jointGoal(msg->data);
+        }
+
+        void pose_goal_sub_cb(const Pose::SharedPtr msg){
+            RCLCPP_INFO(node->get_logger(), "Received pose goal!");
+            this->poseGoal(msg->pose_goal, msg->use_cartesian);
+        }
         
 };
 
@@ -141,11 +174,12 @@ int main(int argc, char **argv){
     auto commander = MoveitCommander(node);
     rclcpp::executors::SingleThreadedExecutor executor;
     executor.add_node(node);
-    auto spinner = std::thread([&executor](){executor.spin();});
+    // auto spinner = std::thread([&executor](){executor.spin();});
+    executor.spin(); // for now to check goals received from a pub!
 
-    rclcpp::Rate rate (1/3.0);
-    commander.namedGoal("pose_1");
-    rate.sleep();
+    // rclcpp::Rate rate (1/3.0);
+    // bool ok = commander.namedGoal("pose_1");
+    // rate.sleep();
     
     // std::vector<double> joints = {1.5, 0.5, 0.0, 1.5, 0.0, -0.7};
     // commander.jointGoal(joints);
@@ -179,16 +213,11 @@ int main(int argc, char **argv){
     // commander.poseGoal(pose_3, true);
     // // rate.sleep();
 
-    commander.openGripper();
-    rate.sleep();
-    bool ok = commander.closeGripper();
-    if (!ok) {
-        RCLCPP_ERROR(node->get_logger(), "Final command failed (plan or execute).");
-    }
-
+    
     // Give the executor a short moment to process final result/status callbacks before shutdown.
     rclcpp::sleep_for(std::chrono::milliseconds(200));
     rclcpp::shutdown();
-    spinner.join();
-    return ok ? 0 : 1;
+    // spinner.join();
+    return 0;
+    
 }
